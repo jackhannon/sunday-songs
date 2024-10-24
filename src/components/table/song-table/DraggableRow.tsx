@@ -62,13 +62,20 @@ function DraggableRow({row, table}: DataTableRowProps) {
 
   return (
     <TableRow
+      className='flex justify-between'
       data-state={row.getIsSelected() && "selected"}
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+
     >
       {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
+        <TableCell key={cell.id}
+          className='flex items-center justify-left'
+          style={{
+            width: cell.column.getSize(),
+          }}
+        >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </TableCell>
       ))}

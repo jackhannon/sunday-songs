@@ -29,7 +29,7 @@ export function TableColumnHeader<TData, TValue>({
             size={"sm"}
             className="h-8 data-[state=open]:bg-accent"
           >
-            <span>{title}</span>
+            <span className='text-sm'>{title}</span>
             {column.getIsSorted() === "desc" ? (
               <ArrowDownIcon className="ml-2 h-4 w-4" />
             ) : column.getIsSorted() === "asc" ? (

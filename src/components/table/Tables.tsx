@@ -5,17 +5,17 @@ import SongsTable from './song-table/SongsTable'
 import ScheduleTable from './schedule-table/ScheduleTable'
 import { Song, SongHistoryEntry } from '@/types/types'
 import { findNextSunday, findPreviousSunday } from '@/utils/utils';
-import { createSongHistory, deleteSongHistory, getSongsHistoryForDate, shiftHistoryEntries} from '@/app/actions';
+import { createSongHistory, deleteSongHistory, getSongs, getSongsHistoryForDate, shiftHistoryEntries} from '@/app/actions';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Table, TableBody } from '../ui/table';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
-const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: SongHistoryEntry[], nextSunday: Date, songs: Song[]}) => {
+const Tables = ({defaultSundaySongs, nextSunday, songs: defaultSongs}: {defaultSundaySongs: SongHistoryEntry[], nextSunday: Date, songs: Song[]}) => {
 
   const [draggedRow, setDraggedRow] = useState<ReactElement | null>(null);
   const [sundaySongs, setSundaySongs] = useState<(SongHistoryEntry)[]>(defaultSundaySongs);
   const [sunday, setSunday] = useState<Date>(nextSunday);
-
+  const [songs, setSongs] = useState<Song[]>(defaultSongs || []);
   const shiftHistoryEntriesForward = (entries: SongHistoryEntry[]) => {
     return entries.map((entry, index, portion) => {
       const previousIndex = (index - 1 + portion.length) % portion.length;
@@ -44,13 +44,18 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
   const handleDragOverSortableRow = useCallback((rowKey: string) => {
     setSundaySongs((prev) => {
       const index = prev.findIndex(song => song.sort_key === rowKey);
-      const placeholderIndex = prev.findIndex(song => song.sort_key === 'placeholder')
+      const placeholderIndex = prev.findIndex(song => song.sort_key === 'placeholder');
       const placeHolderSong = {sort_key: 'placeholder', use_date: '', song: {id: 0, title: ''}, id: -1};
-      if (placeholderIndex !== -1) {
-        return arrayMove(prev, index, placeholderIndex);
-      };
-      const songsWithPlaceHolder = [...prev.slice(0, index), placeHolderSong, ...prev.slice(index)];
-      return songsWithPlaceHolder;
+      
+      if (placeholderIndex === -1) {
+        // If placeholder doesn't exist, insert it
+        return [...prev.slice(0, index), placeHolderSong, ...prev.slice(index)];
+      } else if (placeholderIndex !== index) {
+        // If placeholder exists but in a different position, move it
+        return arrayMove(prev, placeholderIndex, index);
+      }
+      
+      return prev;
     });
   }, []);
 
@@ -67,16 +72,18 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
+      console.log(sunday)
       // the other condition where we will add to the sundaySongs is the one where
       // the sortable prop is not present on the the dropped item
       if (over.id === 'schedule-table') {
         const newSong = songs.find(song => song.id === active.id) as Song;
+
         const songHistoryRecord = await createSongHistory({song_id: active.id as number, use_date: sunday});
         setSundaySongs(prev => {
           return [
             ...prev,
             {
-              use_date: sunday.toISOString().slice(0, 10),
+              use_date: sunday.toLocaleDateString(),
               id: songHistoryRecord.id,
               sort_key: songHistoryRecord.sort_key,
               song: {id: newSong.id, title: newSong.title}
@@ -86,8 +93,8 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
       } else if (!active.data.current?.sortable) {
         //create a new entry then starting from where it was dropped, 
         //push forward all the songs into the next history slot
-        const newSong = songs.find(song => song.id === active.id) as Song;
 
+        const newSong = songs.find(song => song.id === active.id) as Song;
         const songHistoryRecord = await createSongHistory({song_id: active.id as number, use_date: sunday});
         let updatedPortion: SongHistoryEntry[] = [];
         setSundaySongs(prev => {
@@ -97,7 +104,7 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
           const portionToPushForward = filteredOutPlaceHolder.slice(indexToInsertAt);
           const newEntry = {
             id: songHistoryRecord.id,
-            use_date: sunday.toISOString().slice(0, 10),
+            use_date: sunday.toLocaleDateString(),
             sort_key: songHistoryRecord.sort_key,
             song: {
               id: newSong.id,
@@ -142,7 +149,6 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
     }
     setDraggedRow(null);
   };
-
  
   const handleDragStart = useCallback(async (event: DragEndEvent) => {
     // The `draggedRow` state is only useful to drags that occur from the left
@@ -157,27 +163,19 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
     setSunday(nextSunday);
     const newSchedule = await getSongsHistoryForDate(nextSunday);
     setSundaySongs(newSchedule);
+    const newSongs = await getSongs(nextSunday);
+    setSongs(newSongs);
   }, [sunday, setSunday, setSundaySongs]);
+
 
   const handlePrevSunday = useCallback(async () => {
     const prevSunday = findPreviousSunday(sunday);
     setSunday(prevSunday);
     const newSchedule = await getSongsHistoryForDate(prevSunday);
     setSundaySongs(newSchedule);
+    const newSongs = await getSongs(nextSunday);
+    setSongs(newSongs);
   }, [sunday, setSunday, setSundaySongs]);
-
-  const handleAddNewSong = useCallback((song: SongHistoryEntry) => {
-    setSundaySongs((prevRows) => [...prevRows, song]);
-  }, [setSundaySongs]);
-
-  const handleRemoveSong = useCallback((historyEntryId: number) => {
-    const entryToDelete = sundaySongs.find(row => row.id === historyEntryId) as SongHistoryEntry;
-
-    setSundaySongs((prevRows) => 
-      prevRows.filter(row => row.id !== historyEntryId)
-    );
-    deleteSongHistory(entryToDelete);
-  }, [setSundaySongs]);
 
   return (
     <DndContext 
@@ -194,6 +192,7 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
       >
       <SongsTable 
         songs={songs}
+        setSongs={setSongs}
         handleDragOverSortableRow={handleDragOverSortableRow}
         handleDragOffSortableRow={handleDragOffSortableRow}
       />
@@ -204,15 +203,15 @@ const Tables = ({defaultSundaySongs, nextSunday, songs}: {defaultSundaySongs: So
         strategy={verticalListSortingStrategy}
       >
         <ScheduleTable 
-          sunday={sunday} 
+          sunday={sunday}
+          setSundaySongs={setSundaySongs}
           songs={sundaySongs} 
           handleNextSunday={handleNextSunday}
           handlePrevSunday={handlePrevSunday}
-          removeSong={handleRemoveSong}
-          addNewSong={handleAddNewSong}
         />
       </SortableContext>
       {draggedRow ? (
+        
         <DragOverlay>
           <Table>
             <TableBody>

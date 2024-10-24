@@ -17,7 +17,6 @@ interface DataTableRowProps<TData> {
 function DndTableRow<TData>({
   children, 
   row,
-  className
 }: DataTableRowProps<TData>) {
   const {
     attributes,
@@ -27,20 +26,15 @@ function DndTableRow<TData>({
     transition,
   } = useSortable({id: (row.original as SongHistoryEntry).sort_key});
 
+  
   return (
       <TableRow 
+        className='flex items-center justify-left'
         ref={setNodeRef}
-        initial={{height: "0rem"}}
-        animate={{
-          height: "3rem",
-          transition: {
-            height: {
-              duration: .2
-            }
-          }
+        style={{ 
+          transform: CSS.Transform.toString(transform),
+          transition,
         }}
-        className={className}
-        style={{ transform: CSS.Transform.toString(transform), transition }}
         {...listeners}
         {...attributes}
       >

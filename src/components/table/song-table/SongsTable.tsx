@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { columns } from './TableColumns'
 import {
   ColumnFiltersState,
+  ColumnGrouping,
   SortingState,
   flexRender,
   getCoreRowModel,
@@ -19,19 +20,19 @@ import { TableRowActions } from './TableRowActions'
 import { useOptimisticUpdate } from '@/utils/optimisticUpdate'
 const SongsTable = ({
   songs, 
+  setSongs,
   handleDragOffSortableRow, 
-  handleDragOverSortableRow
+  handleDragOverSortableRow,
 }: {
   songs: Song[]
+  setSongs: React.Dispatch<React.SetStateAction<Song[]>>
   handleDragOffSortableRow: (rowKey: string) => void
   handleDragOverSortableRow: (rowKey: string) => void
 }) => {
-  const [data, setData] = useState<Song[]>(songs || []);
   const [originalData, setOriginalData] = useState(songs || []);
-
   const [editedRows, setEditedRows] = useState({});
   const table = useReactTable({
-    data,
+    data: songs,
     columns,
     initialState: {
       columnVisibility: {
@@ -43,6 +44,12 @@ const SongsTable = ({
           id: "archived",
           value: false,
         }
+      ],
+      sorting: [
+        {
+          id: 'last_use', // Sort by the 'last_use' column initially
+          desc: false, // Sort in ascending order
+        },
       ],
     },
     enableRowSelection: true,
@@ -65,28 +72,28 @@ const SongsTable = ({
           archived
         };
         await useOptimisticUpdate({
-          updateFn: () => setData([...data, newRow]),
+          updateFn: () => setSongs([...songs, newRow]),
           serverAction: () => createSong({title, occasion, song_type, archived}),
           commitFn: (result: Song) => {
-            setData((data) => data.map((item) => (item.id === tempId ? result : item)));
+            setSongs((songs) => songs.map((item) => (item.id === tempId ? result : item)));
           },
-          rollbackFn: () => setData(data.filter((row) => row.id !== tempId)),
+          rollbackFn: () => setSongs(songs.filter((row) => row.id !== tempId)),
         })
       },
       removeRow: async (rowIndex: number) => {
-        const song = data[rowIndex];
+        const song = songs[rowIndex];
 
         await useOptimisticUpdate({
-          updateFn: () => setData((prevRows) => prevRows.filter((_row, index) => index !== rowIndex)),
-          serverAction: () => deleteSong(data[rowIndex].id),
-          rollbackFn: () => setData((prevRows) => [...prevRows.slice(0, rowIndex), song, ...prevRows.slice(rowIndex + 1)]),
+          updateFn: () => setSongs((prevRows) => prevRows.filter((_row, index) => index !== rowIndex)),
+          serverAction: () => deleteSong(songs[rowIndex].id),
+          rollbackFn: () => setSongs((prevRows) => [...prevRows.slice(0, rowIndex), song, ...prevRows.slice(rowIndex + 1)]),
         })
       },
       archiveToggleRow: async (rowIndex: number) => {
-        const song = data[rowIndex];
+        const song = songs[rowIndex];
 
         await useOptimisticUpdate({
-          updateFn: () => setData((prevRows) => prevRows.map((row, index) => {
+          updateFn: () => setSongs((prevRows) => prevRows.map((row, index) => {
             if (index === rowIndex) {
               return {
                 ...prevRows[rowIndex],
@@ -95,8 +102,8 @@ const SongsTable = ({
             }
             return row;
           })),
-          serverAction: () => updateSong({...data[rowIndex], archived: !song.archived }),
-          rollbackFn: () => setData((prevRows) => prevRows.map((row, index) => {
+          serverAction: () => updateSong({...songs[rowIndex], archived: !song.archived }),
+          rollbackFn: () => setSongs((prevRows) => prevRows.map((row, index) => {
             if (index === rowIndex) {
               return {
                 ...prevRows[rowIndex],
@@ -116,17 +123,17 @@ const SongsTable = ({
       },
       finishEdit: async (rowIndex: number, revert: boolean) => {
         if (revert) {
-          setData((old) =>
+          setSongs((old) =>
             old.map((row, index) =>
               index === rowIndex ? originalData[rowIndex] : row
             )
           );
         } else {
-          const song = data[rowIndex];
+          const song = songs[rowIndex];
           const originalRow = originalData[rowIndex];
           await useOptimisticUpdate({
             updateFn: () => setOriginalData(
-              (old) => old.map((row, index) => (index === rowIndex ? data[rowIndex] : row))
+              (old) => old.map((row, index) => (index === rowIndex ? songs[rowIndex] : row))
             ),
             serverAction: () => updateSong(song),
             rollbackFn: () => setOriginalData(
@@ -141,7 +148,7 @@ const SongsTable = ({
       },
 
       updateRow: (rowIndex: number, columnId: string, value: string) => {
-        setData((prevRows) =>
+        setSongs((prevRows) =>
           prevRows.map((row, index) => {
             if (index === rowIndex) {
               return {
@@ -160,15 +167,23 @@ const SongsTable = ({
 
   return (
     <div className="grid text-center">
-      <div className='space-y-4 flex flex-col'>
+      <div className="flex flex-col gap-4" style={{maxHeight: "97vh"}}>
         <TableToolbar table={table} />
-        <div className="rounded-md border h-full">
-          <Table>
-            <TableHeader>
+        <div className="relative rounded-md border h-full">
+          <Table className='grid'>
+            {/* margin is applied to account for scroll bar on the table body */}
+            <TableHeader className="grid sticky top-0 bg-background z-10 mr-4">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+                <TableRow 
+                  key={headerGroup.id}
+                  className='flex items-center justify-between w-full'
+                >
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
+                    <TableHead 
+                      key={header.id}
+                      className='flex items-center justify-left'
+                      style={{width: header.getSize()}}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -181,7 +196,7 @@ const SongsTable = ({
               ))}
             </TableHeader>
           
-            <TableBody className='relative h-full'>
+            <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row, index) => (
                   <React.Fragment key={Number(row.id)}>
@@ -191,17 +206,22 @@ const SongsTable = ({
                         <TableRow 
                           key={Number(`overlay-${row.id}`)}
                           className={`absolute right-0 border-none hover:bg-transparent`}
-                          style={{ top: `${index * 49}px` }} // the offset for the row to line up
+                          style={{ top: `${index * 48.5}px` }} // the offset for the row to line up, must be the height of the row
                         >
-                          <TableCell>
+                          <TableCell
+                            className='flex items-center justify-left'
+                          >
                             <TableRowActions row={row} table={table}/>
                           </TableCell>
                         </TableRow>
                       </>
                     ) : (
-                      <TableRow key={Number(row.id)}>
+                      <TableRow key={Number(row.id)} className='flex justify-between'>
                         {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
+                          <TableCell 
+                            key={cell.id} 
+                            className='flex items-center justify-left'
+                          >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
                         ))}
@@ -210,8 +230,8 @@ const SongsTable = ({
                   </React.Fragment>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableRow className='flex justify-center items-center'>
+                  <TableCell colSpan={columns.length} className='flex items-center'>
                     No Songs.
                   </TableCell>
                 </TableRow>

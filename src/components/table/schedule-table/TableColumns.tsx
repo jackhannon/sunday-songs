@@ -3,7 +3,6 @@
 import { createColumnHelper } from "@tanstack/react-table"
 
 import TableColumnHeader from "./TableColumnHeader";
-import { TableRowActions } from "./TableRowActions";
 import { SongHistoryEntry } from "@/types/types";
 import TableCellInfo from "./TableCellInfo";
 

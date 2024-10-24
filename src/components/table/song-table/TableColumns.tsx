@@ -22,6 +22,7 @@ export const columns = [
     meta: {
       type: "text",
     },
+    size:200
   }),
   columnHelper.accessor('last_use', {
     header: ({ column }) => (
@@ -31,7 +32,10 @@ export const columns = [
     meta: {
       type: "date",
     },
-    sortUndefined: "last",
+    enableSorting: true,
+    sortingFn: "datetime",
+    sortDescFirst: false,
+    sortUndefined: "last"
   }),
   columnHelper.accessor('song_type', {
     header: ({ column }) => (
@@ -65,7 +69,8 @@ export const columns = [
   }),
   columnHelper.display({
     id: "actions",
-    cell: TableRowActionsEdit
+    cell: TableRowActionsEdit,
+    size: 100
   })
 ]
 

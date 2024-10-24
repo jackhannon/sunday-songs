@@ -30,7 +30,7 @@ export function TableColumnHeader<TData, TValue>({
             size={"sm"}
             className="h-8 data-[state=open]:bg-accent"
           >
-            <span>{title}</span>
+            <span className='text-sm'>{title}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">

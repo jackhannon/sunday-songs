@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -80,7 +85,20 @@ body {
 }
 
 @layer components {
-  .table {
+  tr {
+    height: 48.5px;
+  }
+  td {
+    height: 48.5px;
+  }
+
+  tbody {
+    position: relative;
+    display: grid;
+    flex-direction: column;
+    overflow: auto;
+    max-height: 86.4vh;
+    width: 100%;
     
   }
   /* ... */

@@ -5,12 +5,12 @@ import { createClient } from "@/utils/supabase/server";
 import { addSortKeys } from "@/utils/utils";
 import { revalidateTag } from "next/cache";
 
-export async function getSongs(): Promise<Song[]> {
+export async function getSongs(lastUseDateToStartFrom: Date): Promise<Song[]> {
+  const formattedDate = lastUseDateToStartFrom.toLocaleDateString();
+
   const supabase = createClient();
-
   let { data, error } = await supabase
-  .rpc('get_songs_ordered_by_last_use_asc')
-
+  .rpc('get_songs_with_last_use', { start_date: formattedDate })
   if (error) console.error(error)
 
   return data || [];
@@ -70,7 +70,7 @@ export async function getSongsOn(date: string) {
 //song history functions
 
 export async function getSongsHistoryForDate(date: Date): Promise<SongHistoryEntry[]> {
-  const formattedDate = date.toISOString().slice(0, 10);
+  const formattedDate = date.toLocaleDateString()
   const supabase = createClient(formattedDate);
   const response = await supabase
   .from('song_history')
@@ -81,8 +81,8 @@ export async function getSongsHistoryForDate(date: Date): Promise<SongHistoryEnt
     `)
   .eq('use_date', formattedDate)
   .order('id')
-
   const data = response.data as unknown as SongHistoryEntry[]
+
   addSortKeys(data)
 
   return data;
@@ -100,9 +100,11 @@ export async function deleteSongHistory(entry: SongHistoryEntry) {
   return response
 }
 
-export async function createSongHistory(entry: {song_id: number, use_date: Date}): Promise<HistoryEntry> {
-  const formattedDate = entry.use_date.toISOString().slice(0, 10);
-
+export async function createSongHistory(entry: {song_id: number, use_date: string | Date}): Promise<HistoryEntry> {
+  const formattedDate = entry.use_date instanceof Date 
+  ? (entry.use_date as Date).toLocaleDateString()
+  : entry.use_date;
+  
   const supabase = createClient(formattedDate);
   const { data: upsertData, error: upsertError } = await supabase
   .from('song_history')
@@ -114,7 +116,7 @@ export async function createSongHistory(entry: {song_id: number, use_date: Date}
   .single();
 
   revalidateTag(formattedDate);
-
+  revalidateTag("songs")
 
  if (upsertError) {
     console.error('Error upserting song history:', upsertError);

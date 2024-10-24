@@ -83,7 +83,7 @@ function TableCell<TData>({
     );
   }
 
-  return <div className="flex items-center text-start whitespace-nowrap h-8">{dateForDisplay || value}</div>
+  return <div className="flex items-center text-startwhitespace-nowrap text-sm">{dateForDisplay || value}</div>
 }
 
 export default TableCell
