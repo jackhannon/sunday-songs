@@ -9,7 +9,7 @@ export async function getSongs(lastUseDateToStartFrom: Date): Promise<Song[]> {
   const formattedDate = lastUseDateToStartFrom.toLocaleDateString();
 
   const supabase = createClient();
-  let { data, error } = await supabase
+  const { data, error } = await supabase
   .rpc('get_songs_with_last_use', { start_date: formattedDate })
   if (error) console.error(error)
 
@@ -37,7 +37,7 @@ export async function updateSong(song: Song) {
   return {data, error};
 }
 
-export async function createSong(song: newSong): Promise<{data: Song, error: any}> {
+export async function createSong(song: newSong): Promise<{data: Song, error: unknown}> {
   const supabase = createClient();
   const { data, error } = 
   await supabase
