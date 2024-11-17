@@ -1,15 +1,22 @@
-## Getting Started
+# Sunday Song Organizer
+This application serves as an song organizer for sunday services.
 
-First, run the development server:
+Main features include: 
+- Drag and drop between tables
+- fine granularity sorting and filtering
+- songs used longest-ago presented first
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+![Demonstration](https://i.gyazo.com/c4bceffb2bd173e43ee79e72b4254d4d.png)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Tech stack
+
+Frontend built with:
+ - NextJS
+ - TypeScript
+ - TailwindCSS
+
+Backend built with:
+ - Postgres
+ - Supabase
+
